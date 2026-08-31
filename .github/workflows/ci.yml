@@ -18,12 +18,12 @@ jobs:
   build-test:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
 
       # -----------------------------------------------------------------
       # Lint
       # -----------------------------------------------------------------
-      - uses: actions/setup-python@v5
+      - uses: actions/setup-python@v7
         with:
           python-version: "3.11"
 
@@ -64,14 +64,14 @@ jobs:
       # "packages: write" a permissions):
       #
       #   - name: Login a GHCR
-      #     uses: docker/login-action@v3
+      #     uses: docker/login-action@v4
       #     with:
       #       registry: ghcr.io
       #       username: ${{ github.actor }}
       #       password: ${{ secrets.GITHUB_TOKEN }}
       #
       #   - name: Build y push
-      #     uses: docker/build-push-action@v6
+      #     uses: docker/build-push-action@v7
       #     with:
       #       context: ./app
       #       push: ${{ github.ref == 'refs/heads/main' }}
