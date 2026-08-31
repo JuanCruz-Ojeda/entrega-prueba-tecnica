@@ -1,5 +1,7 @@
 # Mini-servicio Flask + Redis — solución
 
+[![CI](https://github.com/JuanCruz-Ojeda/entrega-prueba-tecnica/actions/workflows/ci.yml/badge.svg)](https://github.com/JuanCruz-Ojeda/entrega-prueba-tecnica/actions/workflows/ci.yml)
+
 Mini-servicio HTTP (Flask) que expone tres endpoints y usa Redis como caché /
 contador. Este repo parte de un enunciado que **no levantaba** y lo deja
 funcionando, endurecido y documentado.
