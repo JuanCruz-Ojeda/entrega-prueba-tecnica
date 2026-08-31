@@ -5,15 +5,80 @@ on:
     branches: [main]
   pull_request:
 
+# Cancelar corridas viejas del mismo ref si llega un push nuevo.
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+# Permisos mínimos: el pipeline solo lee el repo.
+permissions:
+  contents: read
+
 jobs:
-  build:
+  build-test:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
 
-      # TODO: build de la imagen
-      # TODO: smoke test / lint / tests
-      # TODO: push a un registro (o justificar por qué no)
+      # -----------------------------------------------------------------
+      # Lint
+      # -----------------------------------------------------------------
+      - name: Lint (ruff)
+        run: pipx run ruff==0.16.5 check .
 
-      - name: Placeholder
-        run: echo "Completar este pipeline"
+      # -----------------------------------------------------------------
+      # Build de la imagen
+      # -----------------------------------------------------------------
+      - name: Build de la imagen
+        run: docker build -t mini-app:${{ github.sha }} ./app
+
+      # -----------------------------------------------------------------
+      # Smoke test: se levanta el stack completo y se prueban los endpoints
+      # -----------------------------------------------------------------
+      - name: Smoke test (docker compose)
+        run: |
+          docker compose up -d --build
+          ./scripts/smoke-test.sh http://localhost:8080
+
+      - name: Logs de compose (si algo falló)
+        if: failure()
+        run: docker compose logs
+
+      - name: Bajar el stack
+        if: always()
+        run: docker compose down -v
+
+      # -----------------------------------------------------------------
+      # Publicación de la imagen en un registro
+      # -----------------------------------------------------------------
+      # No se ejecuta en esta prueba: no hay un registro configurado.
+      # En un proyecto real, este paso publicaría la imagen (tag por SHA + latest)
+      # solo en la rama main. Ejemplo con GHCR, usando el GITHUB_TOKEN que ya
+      # provee Actions (no hace falta ningún secret adicional; sí agregar
+      # "packages: write" a permissions):
+      #
+      #   - name: Login a GHCR
+      #     uses: docker/login-action@v3
+      #     with:
+      #       registry: ghcr.io
+      #       username: ${{ github.actor }}
+      #       password: ${{ secrets.GITHUB_TOKEN }}
+      #
+      #   - name: Build y push
+      #     uses: docker/build-push-action@v6
+      #     with:
+      #       context: ./app
+      #       push: ${{ github.ref == 'refs/heads/main' }}
+      #       tags: |
+      #         ghcr.io/${{ github.repository }}:${{ github.sha }}
+      #         ghcr.io/${{ github.repository }}:latest
+      #
+      # Para ECR: autenticación por OIDC (aws-actions/configure-aws-credentials),
+      # aws-actions/amazon-ecr-login y push a
+      # <account>.dkr.ecr.<region>.amazonaws.com/mini-app:<sha>. El deploy a ECS
+      # se dispararía después con "aws ecs update-service --force-new-deployment"
+      # (ver infra/README.md).
+      - name: Publicación de imagen (documentado, no se ejecuta)
+        run: |
+          echo "Se omite el push: no hay registro configurado para la prueba."
+          echo "Ver el bloque comentado arriba para el paso real (GHCR / ECR)."
