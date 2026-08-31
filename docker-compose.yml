@@ -2,6 +2,10 @@
 #
 # La clave "version:" quedó obsoleta en Compose v2 y se quitó a propósito.
 
+# Nombre de proyecto fijo: así los contenedores/red/volumen se llaman
+# "mini-app-*" sin importar el nombre de la carpeta donde se clone el repo.
+name: mini-app
+
 services:
   app:
     build: ./app

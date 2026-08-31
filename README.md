@@ -50,14 +50,64 @@ Probado desde una carpeta limpia (`git clone` → `docker compose up --build`).
 
 ### Verificación rápida
 
-Con el stack arriba, en otra terminal:
+Todo en una línea (levanta, prueba, baja):
 
 ```bash
-./scripts/smoke-test.sh
+docker compose up --build -d && ./scripts/smoke-test.sh && docker compose down -v
 ```
 
-Verifica que `/`, `/health` y `/cache-test` devuelven 200 y que el contador de
-Redis incrementa entre llamadas. Es el mismo script que corre la CI.
+`scripts/smoke-test.sh` espera a que la app responda, y verifica que `/`,
+`/health` y `/cache-test` devuelven 200 y que el contador de Redis incrementa
+entre llamadas. Es el mismo script que corre la CI.
+
+---
+
+## Verificación completa (paso a paso)
+
+```bash
+# 1. Levantar el stack
+docker compose up --build -d
+
+# 2. Endpoints + contador de Redis
+./scripts/smoke-test.sh
+
+# 3. La app corre como usuario sin privilegios (no root)
+docker compose exec app id
+#    -> uid=10001(appuser) gid=10001(appuser)
+
+# 4. Healthchecks de Compose en verde
+docker compose ps
+#    -> app y redis en estado "Up ... (healthy)"
+
+# 5. Resiliencia: si el proceso principal termina por su cuenta (crash, OOM),
+#    "restart: unless-stopped" recrea el contenedor solo.
+docker inspect mini-app-app-1 --format 'reinicios={{.RestartCount}}'   # -> 0
+docker compose exec app sh -c 'kill -TERM 1'                           # mata el master de gunicorn
+sleep 12
+docker inspect mini-app-app-1 --format 'reinicios={{.RestartCount}}'   # -> 1
+curl -fsS http://localhost:8080/health                                 # -> {"status":"healthy"}
+
+# 6. Bajar todo (y borrar el volumen de Redis)
+docker compose down -v
+```
+
+### Lo mismo que corre la CI, en local
+
+```bash
+# Lint (ruff, con las reglas de ruff.toml)
+docker run --rm -v "$PWD:/io" -w /io ghcr.io/astral-sh/ruff:0.16.5 check .
+
+# Build de la imagen
+docker build -t mini-app ./app
+```
+
+### Desde un clon limpio (como lo hará quien revise)
+
+```bash
+git clone https://github.com/JuanCruz-Ojeda/entrega-prueba-tecnica.git
+cd entrega-prueba-tecnica
+docker compose up --build -d && ./scripts/smoke-test.sh && docker compose down -v
+```
 
 ---
 
