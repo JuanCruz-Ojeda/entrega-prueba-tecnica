@@ -23,8 +23,14 @@ jobs:
       # -----------------------------------------------------------------
       # Lint
       # -----------------------------------------------------------------
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+
       - name: Lint (ruff)
-        run: pipx run ruff==0.16.5 check .
+        run: |
+          pip install ruff==0.16.5
+          ruff check .
 
       # -----------------------------------------------------------------
       # Build de la imagen
