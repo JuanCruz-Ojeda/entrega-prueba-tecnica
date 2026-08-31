@@ -140,17 +140,25 @@ Cambios mínimos (no era el objetivo reescribir la app):
 - Se quitó `import time` (no se usaba).
 - Orden de imports según isort (lo pedía el linter).
 
-### CI
+### CI/CD
 
-`.github/workflows/ci.yml` estaba lleno de TODOs. Ahora, en cada push a `main`
-y en cada PR:
+`.github/workflows/ci.yml` estaba lleno de TODOs. Ahora tiene dos jobs:
+
+**`build-test`** — corre en cada push y en cada PR:
 
 1. **Lint** con `ruff` (reglas fijadas explícitamente en `ruff.toml`).
-2. **Build** de la imagen.
-3. **Smoke test**: levanta el stack con Compose y corre `scripts/smoke-test.sh`.
-4. **Push a un registro**: documentado en un paso comentado (GHCR o ECR con
-   tag por SHA + `latest`, solo en `main`). No se ejecuta porque no hay un
-   registro configurado para la prueba.
+2. **Build + smoke test**: levanta el stack con Compose y corre
+   `scripts/smoke-test.sh`. Si algo falla, vuelca los logs de Compose.
+
+**`publish`** — solo en push a `main` y solo si `build-test` pasó:
+
+3. Buildea y **publica la imagen en GHCR** (`ghcr.io/<owner>/<repo>`),
+   taggeada por SHA completo y `latest`, con cache de capas entre corridas.
+   Usa el `GITHUB_TOKEN` que ya provee Actions (sin secrets) y permisos
+   acotados a `packages: write` solo en ese job.
+
+Para desplegar a AWS el camino es análogo (login por OIDC → push a ECR →
+`aws ecs update-service`); el detalle está en [`infra/README.md`](infra/README.md).
 
 ### Infraestructura
 
