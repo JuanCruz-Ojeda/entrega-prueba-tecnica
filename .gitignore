@@ -1,0 +1,17 @@
+# Variables de entorno locales (nunca versionar credenciales)
+.env
+
+# Artefactos de Python
+__pycache__/
+*.py[cod]
+.venv/
+venv/
+.pytest_cache/
+.ruff_cache/
+
+# Logs y temporales
+*.log
+
+# Archivos de sistema / editor
+.DS_Store
+Thumbs.db

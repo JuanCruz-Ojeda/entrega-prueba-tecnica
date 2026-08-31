@@ -1,0 +1,19 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      # TODO: build de la imagen
+      # TODO: smoke test / lint / tests
+      # TODO: push a un registro (o justificar por qué no)
+
+      - name: Placeholder
+        run: echo "Completar este pipeline"
