@@ -1,10 +1,42 @@
-version: "3.9"
+# Levanta todo el stack con un solo comando:  docker compose up --build
+#
+# La clave "version:" quedó obsoleta en Compose v2 y se quitó a propósito.
 
 services:
   app:
     build: ./app
+    # Host 8080 -> contenedor 5000 (donde escucha gunicorn).
     ports:
-      - "8080:8080"
+      - "8080:5000"
+    # La app necesita saber dónde vive Redis. Dentro de la red de compose el
+    # host es el nombre del servicio ("redis"). Se puede overridear con un .env.
+    environment:
+      REDIS_HOST: ${REDIS_HOST:-redis}
+      REDIS_PORT: ${REDIS_PORT:-6379}
+    # No arrancar la app hasta que Redis esté realmente listo (no solo "creado").
+    depends_on:
+      redis:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD", "python", "-c", "import urllib.request,sys; sys.exit(0 if urllib.request.urlopen('http://localhost:5000/health').status == 200 else 1)"]
+      interval: 10s
+      timeout: 3s
+      retries: 5
+      start_period: 5s
+    restart: unless-stopped
 
   redis:
     image: redis:7-alpine
+    # appendonly: persistir a disco para no perder el contador entre reinicios.
+    command: ["redis-server", "--appendonly", "yes"]
+    volumes:
+      - redis-data:/data
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 10s
+      timeout: 3s
+      retries: 5
+    restart: unless-stopped
+
+volumes:
+  redis-data:
