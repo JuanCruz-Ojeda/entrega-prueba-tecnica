@@ -152,10 +152,11 @@ Cambios mínimos (no era el objetivo reescribir la app):
 
 **`publish`** — solo en push a `main` y solo si `build-test` pasó:
 
-3. Buildea y **publica la imagen en GHCR** (`ghcr.io/<owner>/<repo>`),
-   taggeada por SHA completo y `latest`, con cache de capas entre corridas.
-   Usa el `GITHUB_TOKEN` que ya provee Actions (sin secrets) y permisos
-   acotados a `packages: write` solo en ese job.
+3. Buildea y **publica la imagen en GHCR**
+   (`ghcr.io/juancruz-ojeda/entrega-prueba-tecnica`), con los tags
+   `latest` y `sha-<commit>`, labels OCI (repo, revisión) y cache de capas
+   entre corridas. Usa el `GITHUB_TOKEN` que ya provee Actions (sin secrets)
+   y permisos acotados a `packages: write` solo en ese job.
 
 Para desplegar a AWS el camino es análogo (login por OIDC → push a ECR →
 `aws ecs update-service`); el detalle está en [`infra/README.md`](infra/README.md).
