@@ -1,0 +1,10 @@
+# Reduce el contexto de build y evita meter basura en la imagen.
+__pycache__/
+*.py[cod]
+*.pyo
+.pytest_cache/
+.ruff_cache/
+
+# No hace falta el propio Dockerfile dentro de la imagen.
+Dockerfile
+.dockerignore

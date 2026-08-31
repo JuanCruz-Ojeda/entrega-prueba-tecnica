@@ -1,2 +1,4 @@
 flask==3.0.3
 redis==5.0.4
+# Servidor WSGI de producción (reemplaza al servidor de desarrollo de Flask)
+gunicorn==26.2.0

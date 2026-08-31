@@ -1,5 +1,4 @@
 import os
-import time
 
 from flask import Flask, jsonify
 import redis
