@@ -8,6 +8,18 @@ funcionando, endurecido y documentado.
 - `GET /health`     → `{"status":"healthy"}` (usado por los health checks)
 - `GET /cache-test` → incrementa un contador en Redis y lo devuelve
 
+## Origen del proyecto
+
+Este repositorio resuelve una **prueba técnica de DevOps / Cloud Engineer**: se
+recibe un mini-servicio que no levanta y hay que dejarlo funcionando, endurecido
+y documentado, en 2-3 horas.
+
+El enunciado original, tal como fue recibido y sin modificar, está en
+[`enunciado/`](enunciado/). El primer commit del historial (`Estado inicial de
+la prueba técnica`) es el código de partida intacto; a partir de ahí cada commit
+resuelve un problema puntual, así que `git log` cuenta el razonamiento paso a
+paso.
+
 ---
 
 ## Cómo levantarlo (un solo comando)
@@ -126,7 +138,7 @@ el documento explica el camino para llevarlo a IaC.
 - **HTTPS** en el ALB (ACM) con redirect 80→443.
 - **Auto scaling** del servicio ECS configurado (target-tracking).
 - **Scanning** en CI: Trivy sobre la imagen (umbral CRITICAL/HIGH) y
-  checkov/tfsec si se agrega Terraform. Ver `TRACKS_OPCIONALES.md`.
+  checkov/tfsec si se agrega Terraform. Ver [`enunciado/TRACKS_OPCIONALES.md`](enunciado/TRACKS_OPCIONALES.md).
 - **Track A (Kubernetes/Helm)**: chart propio para correr lo mismo en un cluster.
 
 ---
@@ -144,6 +156,10 @@ el documento explica el camino para llevarlo a IaC.
 │   └── smoke-test.sh      # verificación de endpoints (CI + local)
 ├── infra/
 │   └── README.md          # arquitectura AWS + runbook
+├── enunciado/             # el enunciado original, sin modificar
+│   ├── README.md          # consigna
+│   ├── infra.md           # consigna de infraestructura
+│   └── TRACKS_OPCIONALES.md
 ├── .github/workflows/
 │   └── ci.yml             # lint + build + smoke test
 ├── docker-compose.yml     # levanta todo con un comando
