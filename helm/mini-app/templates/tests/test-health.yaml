@@ -1,0 +1,32 @@
+{{/*
+Test del chart. "helm test <release>" crea este Pod; si termina con exit 0,
+el test pasa. La anotación helm.sh/hook=test es lo que lo marca como test.
+Verifica que la app responde y que /cache-test funciona (o sea, que la app
+llega a Redis con la password del Secret).
+*/}}
+apiVersion: v1
+kind: Pod
+metadata:
+  name: "{{ include "mini-app.fullname" . }}-test-health"
+  labels:
+    {{- include "mini-app.labels" . | nindent 4 }}
+    app.kubernetes.io/component: test
+  annotations:
+    "helm.sh/hook": test
+    # before-hook-creation: borra el pod de test anterior justo antes de crear
+    # uno nuevo. No usamos "hook-succeeded" para poder ver los logs después
+    # (helm test --logs o kubectl logs mini-app-test-health).
+    "helm.sh/hook-delete-policy": before-hook-creation
+spec:
+  restartPolicy: Never
+  containers:
+    - name: curl
+      image: curlimages/curl:8.11.1
+      command:
+        - sh
+        - -c
+        - |
+          set -e
+          base="http://{{ include "mini-app.fullname" . }}:{{ .Values.app.service.port }}"
+          echo "GET $base/health";     curl -fsS "$base/health"; echo
+          echo "GET $base/cache-test"; curl -fsS "$base/cache-test"; echo

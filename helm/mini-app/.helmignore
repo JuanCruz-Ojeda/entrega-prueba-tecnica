@@ -1,0 +1,7 @@
+# Patrones que Helm ignora al empaquetar el chart (helm package).
+.git/
+.gitignore
+*.tmp
+*.bak
+*~
+.DS_Store

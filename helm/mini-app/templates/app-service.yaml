@@ -1,0 +1,21 @@
+{{/*
+Service de la app. ClusterIP por defecto: accesible dentro del cluster, y
+desde afuera vía "kubectl port-forward" o "minikube service".
+Balancea entre todas las réplicas del Deployment.
+*/}}
+apiVersion: v1
+kind: Service
+metadata:
+  name: {{ include "mini-app.fullname" . }}
+  labels:
+    {{- include "mini-app.labels" . | nindent 4 }}
+    app.kubernetes.io/component: app
+spec:
+  type: {{ .Values.app.service.type }}
+  selector:
+    {{- include "mini-app.selectorLabels" . | nindent 4 }}
+    app.kubernetes.io/component: app
+  ports:
+    - name: http
+      port: {{ .Values.app.service.port }}
+      targetPort: http
