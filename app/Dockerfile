@@ -14,7 +14,13 @@ WORKDIR /app
 # Instalar dependencias ANTES de copiar el código: si el código cambia pero
 # requirements.txt no, Docker reutiliza esta capa y el build es casi instantáneo.
 COPY requirements.txt .
-RUN pip install --no-cache-dir -r requirements.txt
+# pip/setuptools/wheel solo hacen falta para INSTALAR los paquetes, no para que
+# gunicorn los corra en runtime. Se desinstalan en la misma capa: reduce
+# superficie de ataque y elimina CVEs de esas herramientas de build en la
+# imagen final (encontrado escaneando con Trivy — ver security/README.md).
+RUN pip install --no-cache-dir -r requirements.txt \
+    && pip uninstall -y pip setuptools wheel \
+    && rm -rf /usr/local/lib/python3.11/ensurepip
 
 # Recién ahora copiamos el código de la aplicación.
 COPY app.py .
