@@ -26,7 +26,10 @@ paso.
 
 ## Cómo levantarlo (un solo comando)
 
-Requisitos: Docker + Docker Compose v2.
+Requisitos: **Docker Engine + `docker compose` v2**. En WSL2 Debian el paquete
+`docker.io` de apt es demasiado viejo (sin `docker compose`); ver
+[`REQUISITOS.md`](REQUISITOS.md) para el detalle e instalación por nivel
+(base / Track A / Track B).
 
 ```bash
 docker compose up --build
@@ -280,5 +283,6 @@ completo en los manifiestos de Helm (54 → 25 hallazgos de Checkov).
 ├── .checkov.yaml          # config de Checkov (Track B)
 ├── .trivyignore           # supresiones de Trivy (Track B, hoy vacío)
 ├── .env.example
+├── REQUISITOS.md          # qué instalar por nivel (base / Track A / Track B)
 └── README.md              # este archivo
 ```
