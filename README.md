@@ -142,7 +142,7 @@ Cambios mínimos (no era el objetivo reescribir la app):
 
 ### CI/CD
 
-`.github/workflows/ci.yml` estaba lleno de TODOs. Ahora tiene dos jobs:
+`.github/workflows/ci.yml` estaba lleno de TODOs. Ahora tiene tres jobs:
 
 **`build-test`** — corre en cada push y en cada PR:
 
@@ -150,9 +150,15 @@ Cambios mínimos (no era el objetivo reescribir la app):
 2. **Build + smoke test**: levanta el stack con Compose y corre
    `scripts/smoke-test.sh`. Si algo falla, vuelca los logs de Compose.
 
-**`publish`** — solo en push a `main` y solo si `build-test` pasó:
+**`security-scan`** — corre en cada push y PR, en paralelo (Track B):
 
-3. Buildea y **publica la imagen en GHCR**
+3. **Trivy** (vulnerabilidades en la imagen, bloquea en `CRITICAL`/`HIGH` con fix) +
+   **Checkov** (misconfiguración IaC, no bloquea). SARIF a *Security → Code scanning*.
+   Ver [`security/README.md`](security/README.md).
+
+**`publish`** — solo en push a `main`, y solo si `build-test` **y `security-scan`** pasaron:
+
+4. Buildea y **publica la imagen en GHCR**
    (`ghcr.io/juancruz-ojeda/entrega-prueba-tecnica`), con los tags
    `latest` y `sha-<commit>`, labels OCI (repo, revisión) y cache de capas
    entre corridas. Usa el `GITHUB_TOKEN` que ya provee Actions (sin secrets)
@@ -191,6 +197,24 @@ Requiere un pequeño cambio retrocompatible en `app/app.py` (soporte opcional de
 
 ---
 
+## Track opcional B — DevSecOps / scanning
+
+El pipeline corre dos scanners open-source en cada push y PR (job `security-scan`).
+Detalle, umbrales y hallazgos aceptados en [`security/README.md`](security/README.md).
+
+- **Trivy** — vulnerabilidades (CVEs) en la imagen. **Bloquea** en `CRITICAL`/`HIGH`
+  con fix disponible (`--ignore-unfixed`). `publish` depende de este gate.
+- **Checkov** — misconfiguración en `Dockerfile`, chart de Helm y el propio `ci.yml`.
+  **No bloquea** (`soft-fail`): visibilidad, no gate.
+- Ambos suben SARIF a **Security → Code scanning**.
+
+El scanning **encontró y se arreglaron de verdad** (no se suprimieron):
+`pip`/`setuptools`/`wheel` sin uso en runtime salían de la imagen (2 CVEs `HIGH`);
+`--pull` en los builds evita CVEs por caché de base vieja; `securityContext`
+completo en los manifiestos de Helm (54 → 25 hallazgos de Checkov).
+
+---
+
 ## Decisiones que quedaron a mi criterio
 
 | Decisión | Por qué |
@@ -219,11 +243,11 @@ Requiere un pequeño cambio retrocompatible en `app/app.py` (soporte opcional de
   desde CI vía OIDC.
 - **HTTPS** en el ALB (ACM) con redirect 80→443.
 - **Auto scaling** del servicio ECS configurado (target-tracking).
-- **Scanning** en CI (Track B): Trivy sobre la imagen (umbral CRITICAL/HIGH) y
-  checkov/tfsec si se agrega Terraform. Ver [`enunciado/TRACKS_OPCIONALES.md`](enunciado/TRACKS_OPCIONALES.md).
-- **Helm chart en CI**: paso `helm lint` + `helm template` en el pipeline.
 - **Redis HA en el chart**: hoy es 1 réplica; el paso siguiente es Sentinel/Cluster
   (o, la respuesta de producción, ElastiCache).
+- **Endurecer más el chart** (los hallazgos de Checkov que quedaron): filesystem
+  read-only, `NetworkPolicy`, secrets montados como archivo. Ver `security/README.md`.
+- **Firma de imagen** (cosign) y **SBOM** publicado junto a la imagen en GHCR.
 
 ---
 
@@ -243,14 +267,18 @@ Requiere un pequeño cambio retrocompatible en `app/app.py` (soporte opcional de
 ├── helm/                  # Track opcional A: Kubernetes / Helm
 │   ├── README.md          # cómo desplegar + análisis de escalado
 │   └── mini-app/          # chart propio (Chart.yaml, values.yaml, templates/)
+├── security/              # Track opcional B: DevSecOps / scanning
+│   └── README.md          # umbrales, hallazgos y qué se aceptó
 ├── enunciado/             # el enunciado original, sin modificar
 │   ├── README.md          # consigna
 │   ├── infra.md           # consigna de infraestructura
 │   └── TRACKS_OPCIONALES.md
 ├── .github/workflows/
-│   └── ci.yml             # lint + build + smoke test
+│   └── ci.yml             # build-test + security-scan + publish
 ├── docker-compose.yml     # levanta todo con un comando
 ├── ruff.toml              # config del linter
+├── .checkov.yaml          # config de Checkov (Track B)
+├── .trivyignore           # supresiones de Trivy (Track B, hoy vacío)
 ├── .env.example
 └── README.md              # este archivo
 ```
