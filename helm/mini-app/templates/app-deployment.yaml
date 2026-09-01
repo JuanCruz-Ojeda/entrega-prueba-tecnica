@@ -25,6 +25,16 @@ spec:
         {{- include "mini-app.selectorLabels" . | nindent 8 }}
         app.kubernetes.io/component: app
     spec:
+      # Endurecido según lo que encontró Checkov (framework helm) — ver
+      # security/README.md. La imagen ya corre no-root (uid 10001, ver
+      # app/Dockerfile); esto se lo declara también a Kubernetes.
+      securityContext:
+        runAsNonRoot: true
+        runAsUser: 10001
+        runAsGroup: 10001
+        seccompProfile:
+          type: RuntimeDefault
+      automountServiceAccountToken: false   # la app no llama a la API de k8s
       {{- with .Values.imagePullSecrets }}
       imagePullSecrets:
         {{- toYaml . | nindent 8 }}
@@ -33,6 +43,10 @@ spec:
         - name: app
           image: "{{ .Values.image.repository }}:{{ .Values.image.tag }}"
           imagePullPolicy: {{ .Values.image.pullPolicy }}
+          securityContext:
+            allowPrivilegeEscalation: false
+            capabilities:
+              drop: ["ALL"]
           ports:
             - name: http
               containerPort: 5000

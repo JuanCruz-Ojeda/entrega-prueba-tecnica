@@ -29,9 +29,25 @@ spec:
         {{- include "mini-app.selectorLabels" . | nindent 8 }}
         app.kubernetes.io/component: redis
     spec:
+      # redis:7-alpine ya trae un usuario "redis" (uid 999, gid 1000) sin
+      # privilegios; se lo declaramos a Kubernetes. fsGroup es lo que hace que
+      # el PVC quede escribible por ese gid al montarse (si no, Redis no podría
+      # escribir /data corriendo como no-root).
+      securityContext:
+        runAsNonRoot: true
+        runAsUser: 999
+        runAsGroup: 1000
+        fsGroup: 1000
+        seccompProfile:
+          type: RuntimeDefault
+      automountServiceAccountToken: false
       containers:
         - name: redis
           image: {{ .Values.redis.image | quote }}
+          securityContext:
+            allowPrivilegeEscalation: false
+            capabilities:
+              drop: ["ALL"]
           command: ["redis-server"]
           args:
             - --requirepass
