@@ -1,0 +1,81 @@
+{{/*
+Redis como StatefulSet (1 réplica):
+- identidad estable (pod "<name>-0", PVC "data-<name>-0")
+- volumeClaimTemplates -> cada réplica recibe su propio PVC persistente
+- password vía Secret (nunca en el manifiesto en texto plano)
+
+Persistencia justificada: el contador "hits" es el único estado observable de
+la app y en docker-compose ya se persiste. Da durabilidad ante reinicio de pod,
+NO ante caída de nodo ni borrado del PVC. HA real = Sentinel/Cluster o un
+servicio gestionado (ver infra/README.md, ElastiCache).
+*/}}
+apiVersion: apps/v1
+kind: StatefulSet
+metadata:
+  name: {{ include "mini-app.redis.fullname" . }}
+  labels:
+    {{- include "mini-app.labels" . | nindent 4 }}
+    app.kubernetes.io/component: redis
+spec:
+  serviceName: {{ include "mini-app.redis.fullname" . }}
+  replicas: 1
+  selector:
+    matchLabels:
+      {{- include "mini-app.selectorLabels" . | nindent 6 }}
+      app.kubernetes.io/component: redis
+  template:
+    metadata:
+      labels:
+        {{- include "mini-app.selectorLabels" . | nindent 8 }}
+        app.kubernetes.io/component: redis
+    spec:
+      containers:
+        - name: redis
+          image: {{ .Values.redis.image | quote }}
+          command: ["redis-server"]
+          args:
+            - --requirepass
+            - $(REDIS_PASSWORD)     # k8s sustituye la var (definida en env)
+            - --appendonly
+            - "yes"
+          env:
+            - name: REDIS_PASSWORD
+              valueFrom:
+                secretKeyRef:
+                  name: {{ include "mini-app.redis.secretName" . }}
+                  key: redis-password
+          ports:
+            - name: redis
+              containerPort: 6379
+          readinessProbe:
+            exec:
+              command:
+                - sh
+                - -c
+                - redis-cli -a "$REDIS_PASSWORD" --no-auth-warning ping | grep -q PONG
+            initialDelaySeconds: 5
+            periodSeconds: 10
+          livenessProbe:
+            exec:
+              command:
+                - sh
+                - -c
+                - redis-cli -a "$REDIS_PASSWORD" --no-auth-warning ping | grep -q PONG
+            initialDelaySeconds: 15
+            periodSeconds: 20
+          resources:
+            {{- toYaml .Values.redis.resources | nindent 12 }}
+          volumeMounts:
+            - name: data
+              mountPath: /data
+  volumeClaimTemplates:
+    - metadata:
+        name: data
+      spec:
+        accessModes: ["ReadWriteOnce"]
+        {{- with .Values.redis.persistence.storageClass }}
+        storageClassName: {{ . | quote }}
+        {{- end }}
+        resources:
+          requests:
+            storage: {{ .Values.redis.persistence.size | quote }}

@@ -1,0 +1,22 @@
+{{/*
+Service headless (clusterIP: None) para el StatefulSet de Redis.
+"headless" = el DNS del Service resuelve directo a la IP del pod, sin balanceo.
+Es lo esperado para cargas con estado: querés hablar con "ese" Redis, no con
+"alguno" de un pool. La app usa este nombre como REDIS_HOST.
+*/}}
+apiVersion: v1
+kind: Service
+metadata:
+  name: {{ include "mini-app.redis.fullname" . }}
+  labels:
+    {{- include "mini-app.labels" . | nindent 4 }}
+    app.kubernetes.io/component: redis
+spec:
+  clusterIP: None
+  selector:
+    {{- include "mini-app.selectorLabels" . | nindent 4 }}
+    app.kubernetes.io/component: redis
+  ports:
+    - name: redis
+      port: 6379
+      targetPort: redis

@@ -1,0 +1,14 @@
+{{/*
+Config NO sensible de la app. La app la recibe como variables de entorno
+(ver envFrom en app-deployment.yaml). Nada hardcodeado en el Deployment.
+*/}}
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: {{ include "mini-app.fullname" . }}
+  labels:
+    {{- include "mini-app.labels" . | nindent 4 }}
+data:
+  # La app resuelve Redis por el nombre del Service (DNS interno del cluster).
+  REDIS_HOST: {{ include "mini-app.redis.fullname" . | quote }}
+  REDIS_PORT: "6379"

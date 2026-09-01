@@ -1,0 +1,51 @@
+# Valores por defecto del chart mini-app.
+# Se sobreescriben con:  -f otro-values.yaml   o   --set clave=valor
+
+# --- Imagen de la app ---
+image:
+  # Local (minikube image load):  mini-app
+  # GHCR (privado, requiere imagePullSecret):
+  #   ghcr.io/juancruz-ojeda/entrega-prueba-tecnica
+  repository: mini-app
+  tag: dev
+  # IfNotPresent -> usa la imagen ya cargada en el nodo, no intenta pull.
+  pullPolicy: IfNotPresent
+
+# Secrets para pull de registries privados. Ej: [{ name: ghcr }]
+imagePullSecrets: []
+
+# Permiten cambiar el nombre de los recursos sin tocar el release name.
+nameOverride: ""
+fullnameOverride: ""
+
+# --- Aplicación (Deployment, stateless) ---
+app:
+  replicaCount: 1              # parámetro exigido por el track: escalado horizontal
+  service:
+    type: ClusterIP
+    port: 5000                 # puerto del Service (y del contenedor)
+  resources:
+    requests:
+      cpu: 50m
+      memory: 64Mi
+    limits:
+      cpu: 250m
+      memory: 128Mi
+
+# --- Redis (StatefulSet, con estado) ---
+redis:
+  image: redis:7-alpine
+  auth:
+    # Vacío -> el chart genera una password aleatoria y la preserva entre upgrades.
+    # Con valor -> se usa ese (útil para --set en la demo).
+    password: ""
+  persistence:
+    size: 128Mi
+    storageClass: ""           # "" -> StorageClass por defecto del cluster
+  resources:
+    requests:
+      cpu: 50m
+      memory: 32Mi
+    limits:
+      cpu: 200m
+      memory: 128Mi

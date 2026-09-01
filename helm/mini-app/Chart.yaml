@@ -1,0 +1,10 @@
+apiVersion: v2
+name: mini-app
+description: Mini-servicio Flask + Redis (prueba técnica DevOps) — chart propio
+type: application
+
+# Versión del chart (semver). Se sube en cada cambio del chart.
+version: 0.1.0
+
+# Versión de la aplicación que se despliega (informativa).
+appVersion: "1.0.0"
