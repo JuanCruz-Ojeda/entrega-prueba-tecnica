@@ -1,0 +1,26 @@
+# Config de Checkov (escaneo de misconfiguración en IaC).
+#
+# soft-fail: true  -> Checkov NUNCA hace fallar el pipeline.
+# Motivo: son reglas de buenas prácticas, más subjetivas y con más falsos
+# positivos entre frameworks que las vulnerabilidades de Trivy. Sirven para
+# visibilidad (pestaña Security > Code scanning) y revisión humana, no para
+# bloquear. Los hallazgos que quedan y por qué se aceptan están en
+# security/README.md. (Trivy, en cambio, SÍ bloquea en CRITICAL/HIGH con fix.)
+
+directory:
+  - .
+
+framework:
+  - dockerfile
+  - helm
+  - github_actions
+
+soft-fail: true
+compact: true
+quiet: true   # en el log de CI, solo los hallazgos y el resumen (no los PASSED)
+
+# SARIF para la pestaña Security > Code scanning de GitHub.
+# (El detalle completo de hallazgos vive ahí; en el log de CI queda el resumen.)
+output:
+  - sarif
+output-file-path: checkov-results

@@ -46,6 +46,86 @@ jobs:
         run: docker compose down -v
 
   # ===================================================================
+  # Escaneo de seguridad. Corre en push y PRs, en paralelo a build-test.
+  #  - Trivy: vulnerabilidades (CVEs) en la imagen. BLOQUEA en CRITICAL/HIGH
+  #    con fix disponible (--ignore-unfixed).
+  #  - Checkov: misconfiguración de IaC (Dockerfile / Helm / Actions). NO
+  #    bloquea (soft-fail en .checkov.yaml), solo reporta.
+  # Los dos suben resultados a la pestaña Security > Code scanning.
+  # Umbrales y hallazgos aceptados: security/README.md.
+  # ===================================================================
+  security-scan:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      security-events: write   # subir SARIF a code scanning
+    steps:
+      - uses: actions/checkout@v7
+
+      # --- imagen a escanear ---
+      - uses: docker/setup-buildx-action@v4
+      - name: Build de la imagen (para escanear)
+        uses: docker/build-push-action@v7
+        with:
+          context: ./app
+          load: true
+          pull: true            # base image fresca -> sin CVEs por caché vieja
+          tags: mini-app:scan
+
+      # --- Trivy: reporte completo (no bloquea) + subida a Security ---
+      - name: Trivy - reporte SARIF
+        uses: aquasecurity/trivy-action@v0.36.0
+        with:
+          scan-type: image
+          image-ref: mini-app:scan
+          scanners: vuln
+          format: sarif
+          output: trivy.sarif
+          trivyignores: .trivyignore
+          exit-code: "0"
+      # La subida a "Security > Code scanning" solo funciona en repos públicos
+      # (o con GitHub Advanced Security). continue-on-error para que el job no
+      # falle si el repo es privado — el reporte igual queda en el log del job.
+      - name: Subir Trivy a Security
+        continue-on-error: true
+        uses: github/codeql-action/upload-sarif@v4
+        with:
+          sarif_file: trivy.sarif
+          category: trivy
+
+      # --- Trivy: gate (SÍ bloquea) ---
+      - name: Trivy - gate CRITICAL/HIGH con fix
+        uses: aquasecurity/trivy-action@v0.36.0
+        with:
+          scan-type: image
+          image-ref: mini-app:scan
+          scanners: vuln
+          severity: CRITICAL,HIGH
+          ignore-unfixed: true
+          trivyignores: .trivyignore
+          exit-code: "1"
+          format: table
+
+      # --- Checkov: misconfiguración IaC (no bloquea) ---
+      - uses: azure/setup-helm@v5        # Checkov necesita helm para renderizar el chart
+      - name: helm lint (de yapa, ya que helm está)
+        run: helm lint helm/mini-app
+      - uses: actions/setup-python@v7
+        with:
+          python-version: "3.11"
+      - name: Checkov
+        run: |
+          pip install checkov==3.3.16
+          checkov --config-file .checkov.yaml
+      - name: Subir Checkov a Security
+        if: always()
+        continue-on-error: true      # ver nota en el paso de Trivy
+        uses: github/codeql-action/upload-sarif@v4
+        with:
+          sarif_file: checkov-results/results_sarif.sarif
+          category: checkov
+
+  # ===================================================================
   # Publicación de la imagen. Solo en push a main y solo si build-test pasó.
   # Registro: GHCR (ghcr.io), autenticado con el GITHUB_TOKEN que ya provee
   # Actions (sin secrets adicionales).
@@ -56,7 +136,7 @@ jobs:
   # El detalle está en infra/README.md.
   # ===================================================================
   publish:
-    needs: build-test
+    needs: [build-test, security-scan]   # no se publica una imagen que no pasó el gate de Trivy
     if: github.event_name == 'push' && github.ref == 'refs/heads/main'
     runs-on: ubuntu-latest
     permissions:
@@ -88,6 +168,7 @@ jobs:
         with:
           context: ./app
           push: true
+          pull: true            # base image fresca en cada publicación
           tags: ${{ steps.meta.outputs.tags }}
           labels: ${{ steps.meta.outputs.labels }}
           cache-from: type=gha

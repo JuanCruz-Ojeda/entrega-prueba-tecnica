@@ -8,7 +8,9 @@ name: mini-app
 
 services:
   app:
-    build: ./app
+    build:
+      context: ./app
+      pull: true          # bajar la imagen base fresca (evita CVEs por caché vieja)
     # Host 8080 -> contenedor 5000 (donde escucha gunicorn).
     ports:
       - "8080:5000"

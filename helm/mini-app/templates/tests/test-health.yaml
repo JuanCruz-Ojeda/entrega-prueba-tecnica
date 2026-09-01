@@ -19,9 +19,30 @@ metadata:
     "helm.sh/hook-delete-policy": before-hook-creation
 spec:
   restartPolicy: Never
+  # curlimages/curl ya corre no-root por defecto (uid 100, gid 101).
+  # Sin probes a propósito: es un pod de un solo uso que termina en segundos,
+  # no un servicio de larga duración (readiness/liveness no aplican acá).
+  securityContext:
+    runAsNonRoot: true
+    runAsUser: 100
+    runAsGroup: 101
+    seccompProfile:
+      type: RuntimeDefault
+  automountServiceAccountToken: false
   containers:
     - name: curl
       image: curlimages/curl:8.11.1
+      securityContext:
+        allowPrivilegeEscalation: false
+        capabilities:
+          drop: ["ALL"]
+      resources:
+        requests:
+          cpu: 10m
+          memory: 16Mi
+        limits:
+          cpu: 50m
+          memory: 32Mi
       command:
         - sh
         - -c

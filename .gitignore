@@ -12,6 +12,10 @@ venv/
 # Logs y temporales
 *.log
 
+# Artefactos de los scanners de seguridad (se generan en CI)
+checkov-results/
+*.sarif
+
 # Archivos de sistema / editor
 .DS_Store
 Thumbs.db
