@@ -170,6 +170,27 @@ el documento explica el camino para llevarlo a IaC.
 
 ---
 
+## Track opcional A — Kubernetes / Helm
+
+Chart propio en [`helm/mini-app/`](helm/mini-app) para desplegar la app + Redis en
+un cluster local (minikube). Detalle y comandos en
+[`helm/README.md`](helm/README.md).
+
+- **App**: `Deployment` (stateless, `replicaCount` parametrizable) + `Service`.
+- **Redis**: `StatefulSet` (1 réplica) con `volumeClaimTemplates` (PVC) + `Service` headless.
+- **Config/secrets**: `ConfigMap` (`REDIS_HOST`/`REDIS_PORT`) + `Secret` (password de
+  Redis, autogenerada y estable entre `upgrade`). Nada hardcodeado en los manifiestos.
+- **`values.yaml`** parametrizable: réplicas, imagen/tag, tamaño del PVC, recursos.
+- **`helm test`** incluido (pod que hace `curl` a `/health` y `/cache-test`).
+- Escalar `app` a 2+ réplicas es seguro (stateless + Redis compartido); el límite es
+  Redis (1 instancia = SPOF), que en producción es ElastiCache. Análisis completo en
+  `helm/README.md`.
+
+Requiere un pequeño cambio retrocompatible en `app/app.py` (soporte opcional de
+`REDIS_PASSWORD`); `docker compose` sigue corriendo sin auth.
+
+---
+
 ## Decisiones que quedaron a mi criterio
 
 | Decisión | Por qué |
@@ -198,9 +219,11 @@ el documento explica el camino para llevarlo a IaC.
   desde CI vía OIDC.
 - **HTTPS** en el ALB (ACM) con redirect 80→443.
 - **Auto scaling** del servicio ECS configurado (target-tracking).
-- **Scanning** en CI: Trivy sobre la imagen (umbral CRITICAL/HIGH) y
+- **Scanning** en CI (Track B): Trivy sobre la imagen (umbral CRITICAL/HIGH) y
   checkov/tfsec si se agrega Terraform. Ver [`enunciado/TRACKS_OPCIONALES.md`](enunciado/TRACKS_OPCIONALES.md).
-- **Track A (Kubernetes/Helm)**: chart propio para correr lo mismo en un cluster.
+- **Helm chart en CI**: paso `helm lint` + `helm template` en el pipeline.
+- **Redis HA en el chart**: hoy es 1 réplica; el paso siguiente es Sentinel/Cluster
+  (o, la respuesta de producción, ElastiCache).
 
 ---
 
@@ -217,6 +240,9 @@ el documento explica el camino para llevarlo a IaC.
 │   └── smoke-test.sh      # verificación de endpoints (CI + local)
 ├── infra/
 │   └── README.md          # arquitectura AWS + runbook
+├── helm/                  # Track opcional A: Kubernetes / Helm
+│   ├── README.md          # cómo desplegar + análisis de escalado
+│   └── mini-app/          # chart propio (Chart.yaml, values.yaml, templates/)
 ├── enunciado/             # el enunciado original, sin modificar
 │   ├── README.md          # consigna
 │   ├── infra.md           # consigna de infraestructura
