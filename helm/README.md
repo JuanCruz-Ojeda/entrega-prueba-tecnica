@@ -82,8 +82,12 @@ kubectl run tester --rm -it --image=curlimages/curl --restart=Never -- \
 kubectl logs -l app.kubernetes.io/component=app --prefix --tail=60 | grep cache-test
 #   -> los 3 nombres de pod aparecen sirviendo
 
-helm upgrade --install mini-app ./helm/mini-app     # volver a 1 réplica
+helm upgrade --install mini-app ./helm/mini-app --set app.replicaCount=1   # volver a 1 réplica
 ```
+
+> `--set app.replicaCount=1` debe pasarse de forma explícita: este Helm conserva
+> los valores del release anterior. Alternativa: `--reset-values`, que restablece
+> los valores por defecto del chart.
 
 ### 6. Demo persistencia
 
